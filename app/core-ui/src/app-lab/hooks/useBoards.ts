@@ -225,19 +225,26 @@ export const useBoards: UseBoards = () => {
   const [isAutoSelectingBoard, setIsAutoSelectingBoard] = useState(true);
   const [couldNotAutoSelectBoard, setCouldNotAutoSelectBoard] = useState(false);
 
-  const { isLoading: isLoadingBoards } = useQuery(['boards'], getBoards, {
-    refetchInterval: isBoard ? undefined : 3000,
-    enabled: !boardIsFlashing,
-    onSuccess: (data) => {
-      dispatch({ type: 'SET_BOARDS', payload: data });
+  const { isLoading: isLoadingBoards, isError: isBoardsQueryError } = useQuery(
+    ['boards'],
+    getBoards,
+    {
+      refetchInterval: isBoard ? undefined : 3000,
+      enabled: !boardIsFlashing,
+      onSuccess: (data) => {
+        dispatch({ type: 'SET_BOARDS', payload: data });
+      },
     },
-  });
+  );
 
-  // If the selected board is unplugged, and no longer detected for 5 seconds, reload the app
+  // If the selected board is unplugged, and no longer detected for 5 seconds, reload the app.
+  // Only act on confirmed (successful) polls: a transient detection error (e.g. a race in the
+  // underlying USB scan) must not be mistaken for the board being gone.
   useEffect(() => {
     let timeout: NodeJS.Timeout | void;
     if (
       !boardIsFlashing &&
+      !isBoardsQueryError &&
       selectedBoard &&
       selectedBoard.connectionType === 'USB' && //! manage disconnect only for USB boards, as we don't have serial in network mode tes
       !boards.map((b) => b.serial).includes(selectedBoard.serial)
@@ -249,7 +256,7 @@ export const useBoards: UseBoards = () => {
     }
 
     return () => timeout && clearTimeout(timeout);
-  }, [boardIsFlashing, boards, selectedBoard]);
+  }, [boardIsFlashing, boards, selectedBoard, isBoardsQueryError]);
 
   useEffect(() => {
     const setNeedsImageUpdateAsync = async (): Promise<void> => {

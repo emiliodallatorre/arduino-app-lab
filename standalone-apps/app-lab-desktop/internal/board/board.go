@@ -125,6 +125,43 @@ func (b *Board) CloseTunnels(ctx context.Context) {
 	b.tunnels = nil
 }
 
+// RestartTunnels re-establishes the orchestrator and cloud-connector tunnels
+// over the current connection. Some board operations (e.g. changing the
+// hostname) can briefly disrupt the underlying transport and leave the
+// existing port forwards dead; without this, the app would keep talking to a
+// tunnel that never recovers. It's a no-op for boards with no active
+// connection (e.g. local/SBC mode, which doesn't use tunnels).
+func (b *Board) RestartTunnels(ctx context.Context) error {
+	if !b.HasConn() || len(b.tunnels) == 0 {
+		return nil
+	}
+
+	conn := b.Conn
+	b.CloseTunnels(ctx)
+
+	const (
+		maxAttempts = 5
+		retryDelay  = 2 * time.Second
+	)
+
+	var lastErr error
+	for attempt := 0; attempt < maxAttempts; attempt++ {
+		if attempt > 0 {
+			time.Sleep(retryDelay)
+		}
+		if _, err := b.StartTunnel(ctx, conn, orchestratorTunnelTag, boardOrchestratorPort); err != nil {
+			lastErr = err
+			continue
+		}
+		if _, err := b.StartTunnel(ctx, conn, cloudConnectorTunnelTag, boardCloudConnectorPort); err != nil {
+			runtime.LogErrorf(ctx, "failed to restart cloud-connector tunnel: %v", err)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("failed to restart tunnels after %d attempts: %w", maxAttempts, lastErr)
+}
+
 func (b *Board) EstablishConnection(ctx context.Context, optPassword string) error {
 	apiBoard := b.Info.ToApiBoard()
 	var conn remote.RemoteConn
@@ -202,6 +239,11 @@ func (b *Board) SetName(ctx context.Context, name string) error {
 	// Keep the in-memory info in sync: discovery (e.g. mDNS) can return a
 	// stale name until the board re-announces itself.
 	b.Info.CustomName = name
+	// The hostname change can briefly drop the underlying connection and
+	// leave existing tunnels (orchestrator, cloud-connector) dead.
+	if err := b.RestartTunnels(ctx); err != nil {
+		runtime.LogErrorf(ctx, "failed to restart tunnels after setting board name: %v", err)
+	}
 	return nil
 }
 
