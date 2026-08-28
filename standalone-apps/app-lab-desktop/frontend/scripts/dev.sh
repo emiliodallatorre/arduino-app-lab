@@ -12,10 +12,16 @@ set -u
 ROOT=$(git rev-parse --show-toplevel)
 cd "$ROOT/standalone-apps/app-lab-desktop"
 
-set -a
-# shellcheck source=/dev/null
-source .env.development
-set +a
+if [[ -f .env.development ]]; then
+  set -a
+  # shellcheck source=/dev/null
+  source .env.development
+  set +a
+fi
+
+# Mirrors the Go default in internal/httpclient/httpclient.go so dev runs
+# without a local .env.development still hit the production API.
+HTTPCLIENT_ALLOWLIST="${HTTPCLIENT_ALLOWLIST:-api2.arduino.cc}"
 
 ./frontend/scripts/download.sh
 

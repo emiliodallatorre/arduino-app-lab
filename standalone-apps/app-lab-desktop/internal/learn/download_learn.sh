@@ -37,7 +37,14 @@ git -C "$TMP_DIR" init -q
 git -C "$TMP_DIR" remote add origin "$REPO_URL"
 git -C "$TMP_DIR" sparse-checkout init --cone
 git -C "$TMP_DIR" sparse-checkout set "$SUB_DIR"
-git -C "$TMP_DIR" pull origin "$BRANCH" -q
+if ! git -C "$TMP_DIR" pull origin "$BRANCH" -q; then
+    # The learn-docs repo is private; contributors without access shouldn't be
+    # blocked from building App Lab, just left without embedded learn content.
+    echo "Could not fetch learn contents (no access to $REPO_HOST/$REPO_PATH) — continuing without them"
+    mkdir -p "$DEST"
+    touch "$DEST/.gitkeep"
+    exit 0
+fi
 
 echo "Adding lastmod files to learn contents"
 
