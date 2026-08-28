@@ -74,6 +74,12 @@ export const useSystemProps: UseSystemProps = () => {
       key: SystemPropKey;
       value: SystemPropertyValue;
     }) => upsertSystemProperty(prop.key, prop.value),
+    // Actions like setting the board name can cause a brief connectivity blip
+    // on the board right before this call. Retry instead of failing silently,
+    // otherwise the caller's "done" flag never gets persisted and setup steps
+    // that depend on it (e.g. the setup wizard) can get stuck retrying forever.
+    retry: 3,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 5000),
     onSuccess: (_, { key, value }) => {
       queryClient.setQueryData<Record<string, SystemPropertyValue>>(
         [BoardScopedQuery.SYSTEM_PROPERTIES],
