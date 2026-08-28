@@ -1,0 +1,22 @@
+{
+  "name": "Arduino App Lab",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "mounts": [
+    "source=/dev/bus/usb,target=/dev/bus/usb,type=bind"
+  ],
+  "runArgs": [
+    "--privileged"
+  ],
+  "forwardPorts": [34115],
+  "postCreateCommand": "corepack enable && yarn --version && go version && wails version",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}
