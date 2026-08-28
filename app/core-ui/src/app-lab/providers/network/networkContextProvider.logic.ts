@@ -133,13 +133,13 @@ export function useNetwork(): NetworkContextValue {
     {
       retry: 3,
       refetchInterval: 3000,
-      enabled: !boardIsFlashing && networkDeviceConnected,
+      enabled: !boardIsFlashing && boardIsReachable,
     },
   );
 
   const [scanCount, setScanCount] = useState(0);
   const [scanningIsEnabled, setScanningIsEnabled] = useState(false);
-  const isConnected = networkDeviceConnected && internetIsReachable === true;
+  const isConnected = internetIsReachable === true;
   const {
     data: networkList,
     isFetching: isScanning,
@@ -173,7 +173,7 @@ export function useNetwork(): NetworkContextValue {
     networkStatusChecked:
       wiFiStatusChecked &&
       ethernetStatusChecked &&
-      (!networkDeviceConnected || internetStatusChecked), // internetStatusChecked only matters if there is a network connection
+      internetStatusChecked,
     scanNetworkList,
     connectToWifiNetwork,
     disconnectFromNetwork,

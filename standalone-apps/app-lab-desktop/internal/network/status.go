@@ -10,6 +10,8 @@ import (
 	"github.com/arduino/arduino-app-cli/pkg/board/remote"
 )
 
+const connectivityCheckURL = "http://connectivitycheck.gstatic.com/generate_204"
+
 type Status string
 
 var (
@@ -43,11 +45,28 @@ func (m *Manager) GetStatusByType(ctx context.Context, netType string) (Status, 
 
 func (nm *Manager) getInternetStatus(ctx context.Context) (bool, error) {
 	out, err := nm.Run(ctx, "networking", "connectivity", "check")
-	if err != nil {
-		return false, fmt.Errorf("failed to query internet connectivity: %w", err)
+	if err == nil && strings.TrimSpace(out) == "full" {
+		return true, nil
 	}
 
-	return strings.TrimSpace(out) == "full", nil
+	cmd := nm.Conn.GetCmd(
+		"curl",
+		"--silent",
+		"--output", "/dev/null",
+		"--write-out", "%{http_code}",
+		"--connect-timeout", "2",
+		"--max-time", "5",
+		connectivityCheckURL,
+	)
+	probeCtx, cancel := context.WithTimeout(ctx, nm.Timeout)
+	defer cancel()
+
+	statusCode, probeErr := cmd.Output(probeCtx)
+	if probeErr != nil {
+		return false, nil
+	}
+
+	return strings.TrimSpace(string(statusCode)) == "204", nil
 }
 
 func GetInternetStatus(ctx context.Context, conn remote.RemoteConn) (bool, error) {

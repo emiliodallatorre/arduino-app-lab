@@ -75,6 +75,25 @@ beforeEach(() => {
   domainServices.connectToWiFi.mockResolvedValue(undefined);
 });
 
+describe('useNetwork - connectivity status', () => {
+  it('reports an active internet connection when network devices are unmanaged', async () => {
+    domainServices.getWiFiStatus.mockResolvedValue('disconnected');
+    domainServices.getEthernetStatus.mockResolvedValue('disconnected');
+    domainServices.getInternetStatus.mockResolvedValue(true);
+
+    const { result } = renderHook(() => useNetwork(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.networkStatusChecked).toBe(true);
+      expect(result.current.isConnected).toBe(true);
+    });
+
+    expect(domainServices.getInternetStatus).toHaveBeenCalled();
+  });
+});
+
 describe('useNetwork - scanNetworkList', () => {
   it('scanNetworkList updates the list of Wi-Fi networks', async () => {
     boardIsReachableMock = true;
