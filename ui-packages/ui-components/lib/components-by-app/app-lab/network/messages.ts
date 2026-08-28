@@ -69,6 +69,19 @@ export const networkMessages = defineMessages({
     defaultMessage: 'Scan again',
     description: 'Button label to scan for Wi-Fi networks again',
   },
+  alreadyConnectedDescription: {
+    id: 'appLabSettings.network.alreadyConnectedDescription',
+    defaultMessage:
+      'Your board is already connected to a network. You can continue, or scan for a different one.',
+    description:
+      'Message shown when the board already has an active network connection, offering to continue or scan for another network',
+  },
+  scanForOtherNetworks: {
+    id: 'appLabSettings.network.scanForOtherNetworks',
+    defaultMessage: 'Scan for other networks',
+    description:
+      'Button label to explicitly start scanning for other Wi-Fi networks while already connected',
+  },
   noNetworksWarning: {
     id: 'appLabSettings.network.noNetworksWarning',
     defaultMessage:

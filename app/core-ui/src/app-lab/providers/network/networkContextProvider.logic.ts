@@ -151,8 +151,12 @@ export function useNetwork(): NetworkContextValue {
       const list = data || [];
       setScanCount(list.length > 0 ? 8 : (c): number => c + 1);
     },
-    enabled: scanningIsEnabled,
-    refetchInterval: scanningIsEnabled && scanCount < 8 ? 1500 : false,
+    // A Wi-Fi rescan can briefly drop an already-active connection, so never
+    // trigger it automatically while online — only an explicit scanNetworkList()
+    // call (e.g. the user asking to change networks) bypasses this and scans anyway.
+    enabled: shouldCheckManagedNetworkStatus,
+    refetchInterval:
+      shouldCheckManagedNetworkStatus && scanCount < 8 ? 1500 : false,
   });
 
   const isStatusConnecting =
@@ -167,7 +171,7 @@ export function useNetwork(): NetworkContextValue {
   }, [selectedNetwork, manualNetworkSetup]);
 
   return {
-    isScanning: isScanning || (scanningIsEnabled && scanCount < 8),
+    isScanning: isScanning || (shouldCheckManagedNetworkStatus && scanCount < 8),
     setScanningIsEnabled,
     networkList: networkList || [],
     isNetworkStatusLoading:

@@ -1,3 +1,4 @@
+import { Success } from '@cloud-editor-mono/images/assets/icons';
 import {
   Button,
   ButtonSize,
@@ -14,7 +15,7 @@ import {
 } from 'react';
 
 import { AppLabDialog } from '../../../dialogs';
-import { skipNetworkMessages } from './messages';
+import { networkMessages, skipNetworkMessages } from './messages';
 import styles from './network.module.scss';
 import {
   NetworkCredentials,
@@ -75,6 +76,11 @@ const Network = forwardRef((props: NetworkProps, ref) => {
     useState<NetworkCredentials>(initialCredentials);
 
   const [skipModalOpen, setSkipModalOpen] = useState(false);
+
+  // Rescanning can drop an already-active connection, so it only happens
+  // automatically while offline. This lets the user opt into it explicitly.
+  const [otherNetworksRequested, setOtherNetworksRequested] = useState(false);
+  const showNetworkPicker = !isConnected || otherNetworksRequested;
 
   useImperativeHandle(ref, () => ({
     confirm: (): void => connectToWifiNetwork(networkCredentials),
@@ -189,7 +195,7 @@ const Network = forwardRef((props: NetworkProps, ref) => {
           }}
           errorCode={logic.connectRequestErrorCode}
         />
-      ) : (
+      ) : showNetworkPicker ? (
         <>
           <Scanning
             networkList={networkList}
@@ -227,6 +233,23 @@ const Network = forwardRef((props: NetworkProps, ref) => {
             ))
           )}
         </>
+      ) : (
+        <div className={styles['already-connected']}>
+          <div className={styles['icon']}>
+            <Success />
+          </div>
+          <p>{formatMessage(networkMessages.alreadyConnectedDescription)}</p>
+          <Button
+            variant={ButtonVariant.Tertiary}
+            size={ButtonSize.XSmall}
+            onClick={(): void => {
+              setOtherNetworksRequested(true);
+              scanNetworkList();
+            }}
+          >
+            {formatMessage(networkMessages.scanForOtherNetworks)}
+          </Button>
+        </div>
       )}
     </div>
   );

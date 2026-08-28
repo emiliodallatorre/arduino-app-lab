@@ -30,6 +30,15 @@
   }
 }
 
+.already-connected {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  padding: 24px 0;
+}
+
 .item-icon {
   background: var(--component-bg-above, #374146);;
   border-radius: 4px;
