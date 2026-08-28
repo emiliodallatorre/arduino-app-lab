@@ -45,18 +45,6 @@ func (m *Manager) GetStatusByType(ctx context.Context, netType string) (Status, 
 }
 
 func (nm *Manager) getInternetStatus(ctx context.Context) (bool, error) {
-	out, err := nm.Run(ctx, "networking", "connectivity", "check")
-	nmStatus := strings.TrimSpace(out)
-	if err == nil && nmStatus == "full" {
-		slog.Info("Internet connectivity confirmed by NetworkManager", "status", nmStatus)
-		return true, nil
-	}
-	if err != nil {
-		slog.Info("NetworkManager connectivity check failed; falling back to HTTP probe", "error", err)
-	} else {
-		slog.Info("NetworkManager did not report full connectivity; falling back to HTTP probe", "status", nmStatus)
-	}
-
 	cmd := nm.Conn.GetCmd(
 		"curl",
 		"--silent",
@@ -70,19 +58,31 @@ func (nm *Manager) getInternetStatus(ctx context.Context) (bool, error) {
 	defer cancel()
 
 	statusCode, probeErr := cmd.Output(probeCtx)
-	if probeErr != nil {
+	if probeErr == nil {
+		httpStatus := strings.TrimSpace(string(statusCode))
+		connected := httpStatus == "204"
+		slog.Info(
+			"Internet connectivity HTTP probe completed",
+			"url", connectivityCheckURL,
+			"statusCode", httpStatus,
+			"connected", connected,
+		)
+		if connected {
+			return true, nil
+		}
+	} else {
 		slog.Info("Internet connectivity HTTP probe failed", "url", connectivityCheckURL, "error", probeErr)
+	}
+
+	out, err := nm.Run(ctx, "networking", "connectivity", "check")
+	if err != nil {
+		slog.Info("NetworkManager connectivity check failed", "error", err)
 		return false, nil
 	}
 
-	httpStatus := strings.TrimSpace(string(statusCode))
-	connected := httpStatus == "204"
-	slog.Info(
-		"Internet connectivity HTTP probe completed",
-		"url", connectivityCheckURL,
-		"statusCode", httpStatus,
-		"connected", connected,
-	)
+	nmStatus := strings.TrimSpace(out)
+	connected := nmStatus == "full"
+	slog.Info("NetworkManager connectivity check completed", "status", nmStatus, "connected", connected)
 	return connected, nil
 }
 

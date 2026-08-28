@@ -89,41 +89,6 @@ export function useNetwork(): NetworkContextValue {
   });
 
   const {
-    data: wiFiStatus,
-    isLoading: isWiFiStatusLoading,
-    isSuccess: wiFiStatusChecked,
-  } = useQuery([BoardScopedQuery.WIFI_STATUS], async () => getWiFiStatus(), {
-    retry: 3,
-    refetchInterval: 3000,
-    enabled:
-      !boardIsFlashing &&
-      boardIsReachable &&
-      !connectRequestIsLoading &&
-      !disconnectRequestIsLoading,
-  });
-
-  const {
-    data: ethernetStatus,
-    isLoading: isEthernetStatusLoading,
-    isSuccess: ethernetStatusChecked,
-  } = useQuery(
-    [BoardScopedQuery.ETHERNET_STATUS],
-    async () => getEthernetStatus(),
-    {
-      retry: 3,
-      refetchInterval: 3000,
-      enabled:
-        !boardIsFlashing &&
-        boardIsReachable &&
-        !connectRequestIsLoading &&
-        !disconnectRequestIsLoading,
-    },
-  );
-
-  const networkDeviceConnected =
-    wiFiStatus === 'connected' || ethernetStatus === 'connected';
-
-  const {
     data: internetIsReachable,
     isLoading: isInternetStatusLoading,
     isSuccess: internetStatusChecked,
@@ -139,6 +104,43 @@ export function useNetwork(): NetworkContextValue {
 
   const [scanCount, setScanCount] = useState(0);
   const [scanningIsEnabled, setScanningIsEnabled] = useState(false);
+  const shouldCheckManagedNetworkStatus =
+    scanningIsEnabled &&
+    internetStatusChecked &&
+    internetIsReachable !== true;
+
+  const {
+    data: wiFiStatus,
+    isLoading: isWiFiStatusLoading,
+  } = useQuery([BoardScopedQuery.WIFI_STATUS], async () => getWiFiStatus(), {
+    retry: 3,
+    refetchInterval: 3000,
+    enabled:
+      !boardIsFlashing &&
+      boardIsReachable &&
+      shouldCheckManagedNetworkStatus &&
+      !connectRequestIsLoading &&
+      !disconnectRequestIsLoading,
+  });
+
+  const {
+    data: ethernetStatus,
+    isLoading: isEthernetStatusLoading,
+  } = useQuery(
+    [BoardScopedQuery.ETHERNET_STATUS],
+    async () => getEthernetStatus(),
+    {
+      retry: 3,
+      refetchInterval: 3000,
+      enabled:
+        !boardIsFlashing &&
+        boardIsReachable &&
+        shouldCheckManagedNetworkStatus &&
+        !connectRequestIsLoading &&
+        !disconnectRequestIsLoading,
+    },
+  );
+
   const isConnected = internetIsReachable === true;
   const {
     data: networkList,
@@ -169,11 +171,10 @@ export function useNetwork(): NetworkContextValue {
     setScanningIsEnabled,
     networkList: networkList || [],
     isNetworkStatusLoading:
-      isWiFiStatusLoading || isEthernetStatusLoading || isInternetStatusLoading,
-    networkStatusChecked:
-      wiFiStatusChecked &&
-      ethernetStatusChecked &&
-      internetStatusChecked,
+      isInternetStatusLoading ||
+      (shouldCheckManagedNetworkStatus &&
+        (isWiFiStatusLoading || isEthernetStatusLoading)),
+    networkStatusChecked: internetStatusChecked,
     scanNetworkList,
     connectToWifiNetwork,
     disconnectFromNetwork,

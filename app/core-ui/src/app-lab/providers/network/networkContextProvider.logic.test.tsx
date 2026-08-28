@@ -91,6 +91,24 @@ describe('useNetwork - connectivity status', () => {
     });
 
     expect(domainServices.getInternetStatus).toHaveBeenCalled();
+    expect(domainServices.getWiFiStatus).not.toHaveBeenCalled();
+    expect(domainServices.getEthernetStatus).not.toHaveBeenCalled();
+  });
+
+  it('completes the initial check before querying managed network devices', async () => {
+    domainServices.getInternetStatus.mockResolvedValue(false);
+
+    const { result } = renderHook(() => useNetwork(), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.networkStatusChecked).toBe(true);
+      expect(result.current.isConnected).toBe(false);
+    });
+
+    expect(domainServices.getWiFiStatus).not.toHaveBeenCalled();
+    expect(domainServices.getEthernetStatus).not.toHaveBeenCalled();
   });
 });
 

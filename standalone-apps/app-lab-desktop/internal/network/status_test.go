@@ -84,48 +84,48 @@ func TestGetInternetStatus(t *testing.T) {
 		name          string
 		responses     map[string]commandResponse
 		wantConnected bool
-		wantCurl      bool
+		wantNmcli     bool
 	}{
 		{
-			name: "NetworkManager reports full connectivity",
+			name: "HTTP probe reports connectivity without using NetworkManager",
 			responses: map[string]commandResponse{
+				"curl": {output: "204"},
+			},
+			wantConnected: true,
+		},
+		{
+			name: "NetworkManager confirms connectivity after HTTP probe is inconclusive",
+			responses: map[string]commandResponse{
+				"curl":  {output: "200"},
 				"nmcli": {output: "full"},
 			},
 			wantConnected: true,
+			wantNmcli:     true,
 		},
 		{
-			name: "HTTP probe detects connectivity for unmanaged network",
+			name: "NetworkManager confirms connectivity after HTTP probe fails",
 			responses: map[string]commandResponse{
-				"nmcli": {output: "unknown"},
-				"curl":  {output: "204"},
-			},
-			wantConnected: true,
-			wantCurl:      true,
-		},
-		{
-			name: "HTTP probe handles NetworkManager error",
-			responses: map[string]commandResponse{
-				"nmcli": {err: errors.New("NetworkManager unavailable")},
-				"curl":  {output: "204"},
-			},
-			wantConnected: true,
-			wantCurl:      true,
-		},
-		{
-			name: "HTTP probe rejects captive portal response",
-			responses: map[string]commandResponse{
-				"nmcli": {output: "limited"},
-				"curl":  {output: "200"},
-			},
-			wantCurl: true,
-		},
-		{
-			name: "HTTP probe reports failed request as offline",
-			responses: map[string]commandResponse{
-				"nmcli": {output: "none"},
 				"curl":  {err: errors.New("request failed")},
+				"nmcli": {output: "full"},
 			},
-			wantCurl: true,
+			wantConnected: true,
+			wantNmcli:     true,
+		},
+		{
+			name: "NetworkManager rejects captive portal response",
+			responses: map[string]commandResponse{
+				"curl":  {output: "200"},
+				"nmcli": {output: "limited"},
+			},
+			wantNmcli: true,
+		},
+		{
+			name: "failed HTTP and NetworkManager checks report offline",
+			responses: map[string]commandResponse{
+				"curl":  {err: errors.New("request failed")},
+				"nmcli": {err: errors.New("NetworkManager unavailable")},
+			},
+			wantNmcli: true,
 		},
 	}
 
@@ -141,7 +141,7 @@ func TestGetInternetStatus(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, tt.wantConnected, connected)
-			require.Equal(t, tt.wantCurl, slices.Contains(conn.commands, "curl"))
+			require.Equal(t, tt.wantNmcli, slices.Contains(conn.commands, "nmcli"))
 		})
 	}
 }
